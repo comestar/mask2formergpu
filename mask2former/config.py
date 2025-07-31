@@ -35,7 +35,8 @@ def add_maskformer2_config(cfg):
     cfg.MODEL.MASK_FORMER.CLASS_WEIGHT = 1.0
     cfg.MODEL.MASK_FORMER.DICE_WEIGHT = 1.0
     cfg.MODEL.MASK_FORMER.MASK_WEIGHT = 20.0
-
+    cfg.MODEL.MASK_FORMER.SSIM_WEIGHT = 20.0
+    cfg.MODEL.MASK_FORMER.GAP_WEIGHT = 20.0
     # transformer config
     cfg.MODEL.MASK_FORMER.NHEADS = 8
     cfg.MODEL.MASK_FORMER.DROPOUT = 0.1

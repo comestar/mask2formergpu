@@ -195,7 +195,7 @@ class SetCriterion(nn.Module):
 
         # N x 1 x H x W 格式
         src_masks = src_masks[:, None]
-        target_masks = target_masks[:, None]
+
 
         probs = torch.softmax(src_masks, dim=1)
 

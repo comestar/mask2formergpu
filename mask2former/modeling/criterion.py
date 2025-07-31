@@ -217,7 +217,6 @@ class SetCriterion(nn.Module):
 
         # N x 1 x H x W 格式
         src_masks = src_masks[:, None]
-        target_masks = target_masks[:, None]
 
         # 假设 target 原始为 LongTensor（每个像素为类别索引），需先加一个 channel
         target_masks = target_masks.unsqueeze(1).float()  # [24, 1, 1024, 1024]

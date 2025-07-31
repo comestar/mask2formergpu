@@ -60,8 +60,6 @@ def softmax_gap_loss(pred, target):
 
     # Input is binarized to acquire image A
     A = torch.argmax(pred, dim=1)
-    A_show = torch.squeeze(A, dim=0)
-    A_show = A_show.cpu().numpy() * 255
 
     # Skeleton image B is obtained from A
     A_np = A.cpu().numpy()
@@ -72,8 +70,6 @@ def softmax_gap_loss(pred, target):
         B[n] = temp
     B = torch.from_numpy(B).to(pred.device).double()
     B = torch.unsqueeze(B, dim=1)
-    B_show = B.squeeze()
-    B_show = B_show.cpu().numpy() * 255
 
     # Generate endpoint map C
     kernel = torch.ones((1, 1, 3, 3), dtype=torch.double).to(pred.device)
@@ -86,18 +82,8 @@ def softmax_gap_loss(pred, target):
     kernel = torch.ones((1, 1, 9, 9), dtype=torch.double).to(pred.device)
     N = F.conv2d(C, weight=kernel, bias=None, stride=1, padding=4, dilation=1, groups=1)
     N = N * K
-    N_show = N.squeeze()
-    N_show = N_show.cpu().numpy()
-    N_show = np.where(N_show > 255, 255, N_show)
     temp = torch.where(N == 0, 1, 0)
     W = N + temp
-    W_show = np.where(N_show > 0, N_show, B_show)
-    white = np.ones((512, 10), dtype=np.uint8) * 255
-    show = np.hstack((A_show, white, B_show, white, W_show))
-    show = show.astype(np.uint8)
-    cv2.imshow("image", show)
-    cv2.waitKey()
-    cv2.destroyAllWindows()
 
     loss = torch.mean(W * L)
     return loss

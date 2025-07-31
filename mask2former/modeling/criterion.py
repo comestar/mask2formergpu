@@ -194,7 +194,7 @@ class SetCriterion(nn.Module):
 
 
         losses = {
-            "loss_gap": 1 - softmax_gap_loss(src_masks, target_masks)
+            "loss_gap": softmax_gap_loss(src_masks, target_masks)
         }
         return losses
 
@@ -219,6 +219,14 @@ class SetCriterion(nn.Module):
         src_masks = src_masks[:, None]
         target_masks = target_masks[:, None]
 
+        # 假设 target 原始为 LongTensor（每个像素为类别索引），需先加一个 channel
+        target_masks = target_masks.unsqueeze(1).float()  # [24, 1, 1024, 1024]
+
+        # 插值为 256x256，使用 nearest 避免类别混合
+        target_masks = F.interpolate(target_masks, size=(256, 256), mode='nearest')
+
+        # 恢复为整数标签
+        target_masks = target_masks.squeeze(1).long()  # [24, 256, 256]
         # 将 logits 转为 [0, 1]，因为 SSIM 需要 normalized input
         src_probs = src_masks.sigmoid()
 

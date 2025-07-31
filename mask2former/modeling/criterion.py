@@ -196,6 +196,7 @@ class SetCriterion(nn.Module):
         # N x 1 x H x W 格式
         src_masks = src_masks[:, None]
         src_masks = torch.softmax(src_masks, dim=1)
+        target_masks = target_masks[:, None]
 
         with torch.no_grad():
             # sample point_coords

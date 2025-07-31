@@ -225,12 +225,13 @@ class SetCriterion(nn.Module):
         target_masks = F.interpolate(target_masks, size=(256, 256), mode='nearest')
 
         # 恢复为整数标签
-        target_masks = target_masks.squeeze(1).long()  # [24, 256, 256]
+        target_masks = target_masks.long()  # [24, 1, 256, 256]
         # 将 logits 转为 [0, 1]，因为 SSIM 需要 normalized input
         src_probs = src_masks.sigmoid()
 
         # 计算 SSIM
         # 注意：默认 size_average=True 会输出一个标量
+
         losses = {
             "loss_ssim": 1 - ssim(src_probs, target_masks.float(), data_range=1.0, size_average=True)
         }

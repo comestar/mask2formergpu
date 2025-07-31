@@ -196,33 +196,10 @@ class SetCriterion(nn.Module):
         # N x 1 x H x W 格式
         src_masks = src_masks[:, None]
         src_masks = torch.softmax(src_masks, dim=1)
-        target_masks = target_masks[:, None]
-
-        with torch.no_grad():
-            # sample point_coords
-            point_coords = get_uncertain_point_coords_with_randomness(
-                src_masks,
-                lambda logits: calculate_uncertainty(logits),
-                self.num_points,
-                self.oversample_ratio,
-                self.importance_sample_ratio,
-            )
-            # get gt labels
-            point_labels = point_sample(
-                target_masks,
-                point_coords,
-                align_corners=False,
-            ).squeeze(1)
-
-        point_logits = point_sample(
-            src_masks,
-            point_coords,
-            align_corners=False,
-        ).squeeze(1)
 
 
         losses = {
-            "loss_gap": 1 - softmax_gap_loss(point_logits, point_labels)
+            "loss_gap": 1 - softmax_gap_loss(src_masks, target_masks)
         }
         return losses
 

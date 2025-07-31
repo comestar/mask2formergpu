@@ -176,7 +176,7 @@ class SetCriterion(nn.Module):
         self.oversample_ratio = oversample_ratio
         self.importance_sample_ratio = importance_sample_ratio
 
-    def gaploss(self, outputs, targets, indices, num_masks):
+    def loss_gap(self, outputs, targets, indices, num_masks):
         """
         计算gap损失，mask提取代码参照Loss_mask的部分，删除采样代码
         """

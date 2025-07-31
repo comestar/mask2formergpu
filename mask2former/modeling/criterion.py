@@ -8,6 +8,11 @@ import logging
 import torch
 import torch.nn.functional as F
 from torch import nn
+import numpy as np
+from skimage.morphology import skeletonize
+import cv2
+from torch.nn.modules.loss import *
+from pytorch_msssim import ssim
 
 from detectron2.utils.comm import get_world_size
 from detectron2.projects.point_rend.point_features import (
@@ -44,6 +49,58 @@ dice_loss_jit = torch.jit.script(
     dice_loss
 )  # type: torch.jit.ScriptModule
 
+
+def softmax_gap_loss(pred, target):
+
+    K = 60
+    # 官方推荐值
+    # Input is processed by softmax function to acquire cross-entropy map L
+    criterion = CrossEntropyLoss(reduction='none')
+    L = criterion(pred, target)
+
+    # Input is binarized to acquire image A
+    A = torch.argmax(pred, dim=1)
+    A_show = torch.squeeze(A, dim=0)
+    A_show = A_show.cpu().numpy() * 255
+
+    # Skeleton image B is obtained from A
+    A_np = A.cpu().numpy()
+    B = np.zeros_like(A_np)
+    for n in range(A_np.shape[0]):
+        temp = skeletonize(A_np[n])
+        temp = np.where(temp == True, 1, 0)
+        B[n] = temp
+    B = torch.from_numpy(B).to(pred.device).double()
+    B = torch.unsqueeze(B, dim=1)
+    B_show = B.squeeze()
+    B_show = B_show.cpu().numpy() * 255
+
+    # Generate endpoint map C
+    kernel = torch.ones((1, 1, 3, 3), dtype=torch.double).to(pred.device)
+    kernel[0][0][1][1] = 0
+    C = F.conv2d(B, weight=kernel, bias=None, stride=1, padding=1, dilation=1, groups=1)
+    C = torch.mul(B, C)
+    C = torch.where(C == 1, 1, 0).double()
+
+    # Generate weight map W
+    kernel = torch.ones((1, 1, 9, 9), dtype=torch.double).to(pred.device)
+    N = F.conv2d(C, weight=kernel, bias=None, stride=1, padding=4, dilation=1, groups=1)
+    N = N * K
+    N_show = N.squeeze()
+    N_show = N_show.cpu().numpy()
+    N_show = np.where(N_show > 255, 255, N_show)
+    temp = torch.where(N == 0, 1, 0)
+    W = N + temp
+    W_show = np.where(N_show > 0, N_show, B_show)
+    white = np.ones((512, 10), dtype=np.uint8) * 255
+    show = np.hstack((A_show, white, B_show, white, W_show))
+    show = show.astype(np.uint8)
+    cv2.imshow("image", show)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+
+    loss = torch.mean(W * L)
+    return loss
 
 def sigmoid_ce_loss(
         inputs: torch.Tensor,
@@ -118,6 +175,69 @@ class SetCriterion(nn.Module):
         self.num_points = num_points
         self.oversample_ratio = oversample_ratio
         self.importance_sample_ratio = importance_sample_ratio
+
+    def gaploss(self, outputs, targets, indices, num_masks):
+        """
+        计算gap损失，mask提取代码参照Loss_mask的部分，删除采样代码
+        """
+        assert "pred_masks" in outputs
+
+        src_idx = self._get_src_permutation_idx(indices)
+        tgt_idx = self._get_tgt_permutation_idx(indices)
+
+        src_masks = outputs["pred_masks"]
+        src_masks = src_masks[src_idx]
+        masks = [t["masks"] for t in targets]
+
+        target_masks, valid = nested_tensor_from_tensor_list(masks).decompose()
+        target_masks = target_masks.to(src_masks)
+        target_masks = target_masks[tgt_idx]
+
+        # N x 1 x H x W 格式
+        src_masks = src_masks[:, None]
+        target_masks = target_masks[:, None]
+
+        probs = torch.softmax(src_masks, dim=1)
+
+        losses = {
+            "loss_gap": 1 - softmax_gap_loss(probs, target_masks.float())
+        }
+        return losses
+
+    def loss_ssim(self, outputs, targets, indices, num_masks):
+        """
+        计算ssim损失，mask提取代码参照Loss_mask的部分，删除采样代码
+        """
+        assert "pred_masks" in outputs
+
+        src_idx = self._get_src_permutation_idx(indices)
+        tgt_idx = self._get_tgt_permutation_idx(indices)
+
+        src_masks = outputs["pred_masks"]
+        src_masks = src_masks[src_idx]
+        masks = [t["masks"] for t in targets]
+
+        target_masks, valid = nested_tensor_from_tensor_list(masks).decompose()
+        target_masks = target_masks.to(src_masks)
+        target_masks = target_masks[tgt_idx]
+
+        # N x 1 x H x W 格式
+        src_masks = src_masks[:, None]
+        target_masks = target_masks[:, None]
+
+        # 将 logits 转为 [0, 1]，因为 SSIM 需要 normalized input
+        src_probs = src_masks.sigmoid()
+
+        # 计算 SSIM
+        # 注意：默认 size_average=True 会输出一个标量
+        losses = {
+            "loss_ssim": 1 - ssim(src_probs, target_masks.float(), data_range=1.0, size_average=True)
+        }
+        del src_masks
+        del target_masks
+        del src_probs
+
+        return losses
 
     def loss_labels(self, outputs, targets, indices, num_masks):
         """Classification loss (NLL)
@@ -205,6 +325,8 @@ class SetCriterion(nn.Module):
         loss_map = {
             'labels': self.loss_labels,
             'masks': self.loss_masks,
+            'ssim': self.loss_ssim,
+            'gap': self.loss_gap
         }
         assert loss in loss_map, f"do you really want to compute {loss} loss?"
         return loss_map[loss](outputs, targets, indices, num_masks)

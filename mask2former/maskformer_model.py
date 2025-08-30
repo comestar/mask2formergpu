@@ -126,7 +126,7 @@ class MaskFormer(nn.Module):
                 aux_weight_dict.update({k + f"_{i}": v for k, v in weight_dict.items()})
             weight_dict.update(aux_weight_dict)
 
-        losses = ["labels", "masks", "gap", "ssim"]
+        losses = ["labels", "masks", ]#"gap", "ssim"
 
         criterion = SetCriterion(
             sem_seg_head.num_classes,

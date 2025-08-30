@@ -296,6 +296,25 @@ def setup(args):
 
 
 def main(args):
+    from detectron2.data.datasets import register_coco_instances
+    from detectron2.data import MetadataCatalog, DatasetCatalog
+
+    # 注册训练集
+    register_coco_instances(
+        "cocotrain",  # 数据集名称，随意命名
+        {},
+        r"D:\Project\Database\coco-2017/annotations/instances_train2017.json",  # 标注文件路径
+        r"D:\Project\Database\coco-2017/train2017"  # 图像目录
+    )
+    # 注册验证集
+    register_coco_instances(
+        "cocoval",
+        {},
+        r"D:\Project\Database\coco-2017/annotations/instances_val2017.json",
+        r"D:\Project\Database\coco-2017/val2017"
+    )
+
+
     cfg = setup(args)
 
     if args.eval_only:
@@ -326,3 +345,7 @@ if __name__ == "__main__":
         dist_url=args.dist_url,
         args=(args,),
     )
+"""
+python train_net.py --config-file configs/coco/instance-segmentation/maskformer2_R50_bs16_50ep_sp.yaml SOLVER.IMS_PER_BATCH 2 
+python train_net.py --config-file configs/coco/instance-segmentation/maskformer2_R50_bs16_50ep_sp.yaml --num-gpus 0 SOLVER.IMS_PER_BATCH 2 SOLVER.BASE_LR 0.00005
+"""

@@ -12,7 +12,7 @@ import numpy as np
 from skimage.morphology import skeletonize
 import cv2
 from torch.nn.modules.loss import *
-from pytorch_msssim import ssim
+# from pytorch_msssim import ssim
 
 from detectron2.utils.comm import get_world_size
 from detectron2.projects.point_rend.point_features import (

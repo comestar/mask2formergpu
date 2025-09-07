@@ -313,6 +313,22 @@ def main(args):
         r"D:\Project\Database\coco-2017/annotations/instances_val2017.json",
         r"D:\Project\Database\coco-2017/val2017"
     )
+    # coco_2025
+    # 注册训练集
+    register_coco_instances(
+        "Maingdtrain",  # 数据集名称，随意命名
+        {},
+        r"D:\Project\DoPaper\1\GD_JZ\annotations\train.json",  # 标注文件路径
+        r"D:\Project\DoPaper\1\GD_JZ\Train_2025" # 图像目录
+    )
+    # 注册验证集
+    register_coco_instances(
+        "Maingdtest",
+        {},
+        r"D:\Project\DoPaper\1\GD_JZ\annotations\test.json",
+        r"D:\Project\DoPaper\1\GD_JZ\Test_2025"
+    )
+
 
 
     cfg = setup(args)
@@ -347,5 +363,5 @@ if __name__ == "__main__":
     )
 """
 python train_net.py --config-file configs/coco/instance-segmentation/maskformer2_R50_bs16_50ep_sp.yaml SOLVER.IMS_PER_BATCH 2 
-python train_net.py --config-file configs/coco/instance-segmentation/maskformer2_R50_bs16_50ep_sp.yaml --num-gpus 0 SOLVER.IMS_PER_BATCH 2 SOLVER.BASE_LR 0.00005
+python train_net.py --config-file configs/coco/instance-segmentation/maskformer2_R50_bs16_50ep_sp.yaml --num-gpus 1 SOLVER.IMS_PER_BATCH 2 SOLVER.BASE_LR 0.00005
 """
